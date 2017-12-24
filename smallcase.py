@@ -53,11 +53,9 @@ for allStkSc in range(len(scLink)):
     print('$$$ Segment -->')
     allSc = soup.find_all(class_="segment-name")
     for idx,sc in enumerate(allSc):
-        if (sc.string != 'None'):
             print(idx,sc.string)
 
     print('\n$$$ Stocks --->')
     allSc = soup.find_all("tip-cont")
     for idx,sc in enumerate(allSc):
-        if (sc.string != 'None'):
             print(idx,sc.string)
