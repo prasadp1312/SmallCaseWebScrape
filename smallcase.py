@@ -1,125 +1,105 @@
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from bs4 import BeautifulSoup
-import re
 import time
-import NseTicker
-import Screener
+from bs4 import BeautifulSoup
 
-# Finding Nummbers as String from Screener
-def find_numbers(string, ints=True):
-    numexp = re.compile(r'[-]?\d[\d,]*[\.]?[\d{2}]*') #optional - in front
-    numbers = numexp.findall(string)
-    return(numbers)
 
-Driver = 'D:\\Coding\\WebDriver\\chromedriver.exe'
-start_time = time.time()
-print('Python is Awesome')
+def countdown(start=30, end=0):
+    """Update to print every 5 sec in between"""
+    print("Login with in " + str(start) + " seconds")
+    time.sleep(start)
+    print(str(start) + " Done ...")
 
-URL = 'https://www.smallcase.com/discover?sortBy=Latest&count=100'
 
-# Start the WebDriver and load the page
-wd = webdriver.Chrome(Driver)
-wd.set_page_load_timeout(30)
-wd.get(URL)
-html_page  = wd.page_source
+class SmallCase:
+    """get data from www.smallcase.com"""
 
-### Find Login Button & Click -- Opnes New Window
-#wd.find_element_by_xpath("//button[@class='btn btn-lg btn-secondary kite-login']").click()
+    Driver = 'D:\\GitHub\\chromedriver.exe'  # Update with chrome driver location V92.0.
+    ZerodhaUrl = 'https://smallcase.zerodha.com/discover/all?count=31'  # Update with broker URL
+    wd = []
+    scName = []
+    scLink = []
+    scStock = []
+    htmlpage = ""
+    soup = ""
 
-scName = []
-scLink = []
-scNameLinkFile = open('ScNameLink.csv','w')
-scStocksFile = open('ScStocks.csv','w', encoding="utf-8")
-stocksList = open('OnlyStocksList.csv','w', encoding="utf-8")
-soup = BeautifulSoup(html_page,'html.parser')
-#print(soup.prettify())
+    def __init__(self):
+        self.logintozerodhasmallcase()
+        self.html_page = self.wd.page_source
+        # self.mockMainPage() # Copy results and save in a txt file
+        self.soup = BeautifulSoup(self.html_page, 'html.parser')
+        self.getallsmallcase()
+        self.getallsmallcaselinks()
+        for idx, links in enumerate(self.scLink):
+            self.getdatafromsmallcase(links)
 
-allSc = soup.find_all(class_="name pull-left")
-for idx,sc in enumerate(allSc):
-    scName.append(sc.string)
+    def logintozerodhasmallcase(self):
+        print("login to small case with your zerodha account")
+        self.wd = webdriver.Chrome(self.Driver)
+        self.wd.set_page_load_timeout(30)
+        self.wd.get(self.ZerodhaUrl)
+        """ Automate login with encrypted Credentials """
+        countdown()
 
-# Find all Links with text '/smallcase/ anywhere between it
-allScLinks = soup.findAll('a', attrs={'href': re.compile("^/smallcase/")})
+    def getallsmallcase(self):
+        titlename = "SmallcaseCard__title__2M7E_ line-height-one ellipsis mr8 SmallcaseCard__size-auto__NxnIC"
+        allsc = self.soup.findAll(class_=titlename)
+        for idx, data in enumerate(allsc):
+            # print(data.string)
+            self.scName.append(data.string)
 
-for idx,link in enumerate(allScLinks):
-    scIndivLink = link.get('href')
-    scLink.append('https://www.smallcase.com/smallcase/stocks' + scIndivLink[10:20])
+    def getallsmallcaselinks(self):
+        linkmatch = "SmallcaseCard__description__1H-JL text-14 text-normal lh-157 mb8 SmallcaseCard__size-auto__NxnIC"
+        allsclink = self.soup.select(
+            'p[class*="SmallcaseCard__description__1H-JL text-14 text-normal lh-157 mb8 '
+            'SmallcaseCard__size-auto__NxnIC"]')
+        sclinklist = allsclink[0:len(allsclink)]
+        for idx, data in enumerate(sclinklist):
+            # Find link extension from 'js-shave_(.+?)'
+            liskprefix = 'https://smallcase.zerodha.com/smallcase/'
+            replacetolink = 'class="js-shave_'  # Get link from end of js-shave_
+            linkpostfix = '/stocks'
+            data = str(data)
+            data = data.split()
+            data = data[1]
+            # print(data.replace(replaceToLink,liskPrefix)+linkPostFix)
+            self.scLink.append(data.replace(replacetolink, liskprefix) + linkpostfix)
 
-scNameLinkFile.write('SmallCaseName , SmallcaseLink'+ '\n')
-for iter in range(len(allScLinks)):
-    print(scName[iter] + ',' + scLink[iter] + '\n')
-    scNameLinkFile.write(scName[iter] + ',' + scLink[iter] + '\n')
+    def getdatafromsmallcase(self, sclink):
+        print(sclink)
+        self.wd.get(sclink)
+        self.html_page = self.wd.page_source
+        self.soup = BeautifulSoup(self.html_page, 'html.parser')
+        # print(self.soup)
+        self.getstockdatafromsmallcase()
 
-scNameLinkFile.close()
+    def getstockdatafromsmallcase(self):
+        time.sleep(2)
+        stock = []
+        segment = []
+        titlename = "StocksWeights__stock-name__2ANv4 pull-left font-medium text-14 text-blue ellipsis"
+        allsc = self.soup.findAll(class_=titlename)
+        for idx, data in enumerate(allsc):
+            print(data.string)
+            stock.append(data.string)
 
-print('Please Login Within 30 Seconds :')
-time.sleep(30)
+        self.scStock.append(stock)
+        segmentsname = "ellipsis"
+        allsc = self.soup.findAll(class_=segmentsname)
+        for idx, data in enumerate(allsc):
+            # print(data.string)
+            segment.append(data.string)
 
-scSegments = []
-scStocks= []
-scStocksTickr = []
-for allStkSc in range(len(scLink)):
-    print('########################################')
-    print(scName[allStkSc])
-    print('########################################')
-    wd.get(scLink[allStkSc])
-    html_page  = wd.page_source
-    #wd.quit()
+        # segment = set(segment) - set(stock)
+        # print(segment)
 
-    soup = BeautifulSoup(html_page,'html.parser')
-    #print(soup.prettify())
+    def mockmainpage(self):
+        f = open("MainPageSample.html", "r")
+        self.html_page = f.read()
+        f.close()
 
-    allSc = soup.find_all(class_="value-wrap value text-success")
-    for idx,sc in enumerate(allSc):
-        scSegments.append(sc.string)
-        print(idx,sc.string)
+# Driver Code
+# TODO : Implement Write to file
+# TODO : Implement max repeats
 
-    print('$$$ Segment -->')
-    allSc = soup.find_all(class_="segment-name")
-    for idx,sc in enumerate(allSc):
-        if sc.string is not None:
-            scSegments.append(sc.string)
-            print(idx,sc.string)
 
-    print('\n$$$ Stocks --->')
-    allSc = soup.find_all("tip-cont")
-    for idx,sc in enumerate(allSc):
-        if sc.string is not None:
-            scStocks.append((sc.string))
-            print(idx,sc.string)
-
-stop_time = time.time()
-print('Time Taken = ' + str(int(stop_time - start_time - 20)) + ' Seconds to scrape ' + str(len(scStocks)) + ' stocks from ' + str(len(scName)) + ' Smallcases')
-scStocks = list(set(scStocks))
-print('Non Duplicate Stocks : ' + str(len(scStocks)))
-for stocks in scStocks:
-    if stocks is not None :
-        StockTickr = NseTicker.getTicker(stocks)
-        scStocksTickr.append(StockTickr)
-        print(stocks + ' --> ' + StockTickr)
-        stocksList.write(stocks + ',' + StockTickr + '\n')
-wd.quit()
-stocksList.close()
-
-start_time = time.time()
-scStocksFile.write('Stocks,Ticker,Market Cap,Current Price,Book Value,Stock PE,Dividend Yield,Face Value,52Wk High,52Wk Low,Screener Link'+ '\n')
-for itr in range(len(scStocks)):#len(scStocks)
-    StockTickr = scStocksTickr[itr]
-    StockName = scStocks[itr]
-
-    if StockName is not None and  StockTickr is not None:
-        print('#' + str(itr) + '/' + str(len(scStocks))+ ' : ' +StockName + '->'+ StockTickr )
-    else:
-        print('Something is Wrong in' + str(itr))
-        continue
-
-    scStocksFile.write(StockName + ',' + StockTickr + ',')
-    data = Screener.scrapeScreener(StockTickr)
-    print(data)
-    scStocksFile.write(data[0] + ',' + data[1] + ',' +data[2] + ',' +data[3] + ',' +data[4] + ',' +data[5] + ',' +data[6] + ',' +data[7] + '\n' )
-
-scStocksFile.close()
-wd.quit()
-stop_time = time.time()
-print('Time Taken = ' + str(int(stop_time - start_time)) + 'Seconds')
+sc = SmallCase()
